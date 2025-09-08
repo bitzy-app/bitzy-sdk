@@ -9,11 +9,8 @@
 # testing
 /coverage
 
-# next.js
-/.next/
-/out/
-
 # production
+/dist
 /build
 
 # misc
@@ -26,20 +23,15 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
+.env
 .env*.local
-
-# vercel
-.vercel
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts
 
-# Sentry Config File
-# .sentryclirc
+# IDE
+.vscode/
+.idea/
 
-analyze/
-
-.env
-# Sentry Config File
-.env.sentry-build-plugin
+# OS
+Thumbs.db

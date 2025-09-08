@@ -1,10 +1,11 @@
 import resolve from "@rollup/plugin-node-resolve";
 import commonjs from "@rollup/plugin-commonjs";
 import typescript from "@rollup/plugin-typescript";
-import { terser } from "rollup-plugin-terser";
+import terser from "@rollup/plugin-terser";
 import dts from "rollup-plugin-dts";
+import { readFileSync } from "fs";
 
-const packageJson = require("./package.json");
+const packageJson = JSON.parse(readFileSync("./package.json", "utf8"));
 
 export default [
   {
@@ -24,14 +25,19 @@ export default [
     plugins: [
       resolve(),
       commonjs(),
-      typescript({ tsconfig: "./tsconfig.json" }),
+      typescript({ 
+        tsconfig: "./tsconfig.json",
+        declaration: true,
+        declarationDir: "./dist"
+      }),
       terser(),
     ],
     external: Object.keys(packageJson.peerDependencies || {}),
   },
   {
-    input: "dist/index.d.ts",
+    input: "src/index.ts",
     output: [{ file: "dist/index.d.ts", format: "esm" }],
     plugins: [dts()],
+    external: Object.keys(packageJson.peerDependencies || {}),
   },
 ];
