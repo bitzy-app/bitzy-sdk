@@ -60,19 +60,12 @@
     "typescript": "^5.0.0"
   },
   "peerDependencies": {
-    "viem": ">=1.0.0",
     "react": ">=16.8.0"
   },
   "peerDependenciesMeta": {
-    "viem": {
-      "optional": true
-    },
     "react": {
       "optional": true
     }
-  },
-  "overrides": {
-    "@privy-io/react-auth": ">=2.0.0"
   },
   "publishConfig": {
     "access": "public",
