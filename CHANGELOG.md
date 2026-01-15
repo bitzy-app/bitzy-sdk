@@ -1,3 +1,7 @@
+## [0.1.1](https://github.com/bitzy-app/bitzy-sdk/compare/v0.1.0...v0.1.1) (2026-01-15)
+
+
+
 # [0.1.0](https://github.com/bitzy-app/bitzy-sdk/compare/v0.0.8...v0.1.0) (2026-01-15)
 
 
