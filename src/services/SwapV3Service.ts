@@ -6,6 +6,9 @@ import {
   PublicClient,
   encodeFunctionData,
   decodeFunctionResult,
+  createPublicClient,
+  http,
+  defineChain,
 } from "viem";
 import { Token, SwapResult, SwapOptions, SwapError } from "../types";
 import { getPartCountOffline } from "../utils/PartCount";
@@ -16,6 +19,7 @@ import {
   ROUTER_TARGET,
   ERROR_CODES,
   DEFAULT_NETWORKS,
+  getRpcConfig,
 } from "../constants";
 import {
   fromTokenAmount,
@@ -42,6 +46,41 @@ export class SwapV3Service {
 
   constructor(config: SwapV3ServiceConfig) {
     this.config = config;
+  }
+
+  /**
+   * Get or create publicClient for the given chainId
+   * Returns existing publicClient if provided, otherwise creates a default one
+   */
+  private getPublicClient(chainId: number): PublicClient {
+    if (this.config.publicClient) {
+      return this.config.publicClient;
+    }
+
+    const rpcConfig = getRpcConfig(chainId);
+    if (!rpcConfig) {
+      throw new SwapError({
+        message: `Unsupported chainId: ${chainId}`,
+        code: ERROR_CODES.NETWORK_NOT_SUPPORTED,
+        details: { chainId },
+      });
+    }
+
+    const chain = defineChain({
+      id: chainId,
+      name: rpcConfig.name,
+      network: rpcConfig.name.toLowerCase().replace(/\s+/g, "-"),
+      nativeCurrency: rpcConfig.nativeCurrency,
+      rpcUrls: {
+        default: { http: rpcConfig.rpcUrls },
+        public: { http: rpcConfig.rpcUrls },
+      },
+    });
+
+    return createPublicClient({
+      chain,
+      transport: http(),
+    });
   }
 
   /**
@@ -174,7 +213,6 @@ export class SwapV3Service {
       const { hops, validPath } = pathData.data;
 
       if (hops.length === 0) {
-        console.log("SDK: No hops found");
         return {
           routes: [],
           distributions: [],
@@ -184,10 +222,6 @@ export class SwapV3Service {
           isAmountOutError: true,
         };
       }
-
-      console.log("SDK: hops.length =", hops.length);
-      console.log("SDK: validPath.length =", validPath.length);
-      console.log("SDK: partCount =", partCount);
 
       // Encode routes for contract call
       const encodedRoutes = encodeAbiParameters(
@@ -211,106 +245,89 @@ export class SwapV3Service {
       let distributions: number[] = [];
       let routes: any[] = [];
 
-      if (this.config.publicClient) {
-        try {
-          console.log("SDK: Calling splitQuery with:", {
-            bitzyQueryAddress,
-            amountIn: amountInBN.toFixed(0),
-            partCount,
-            encodedRoutesLength: encodedRoutes.length,
-          });
+      const publicClient = this.getPublicClient(chainId);
+      try {
+        const data = encodeFunctionData({
+          abi: BITZY_QUERY_ABI,
+          functionName: "splitQuery",
+          args: [
+            amountInBN.toFixed(0) as any,
+            encodedRoutes,
+            partCount as any,
+          ],
+        });
 
-          const data = encodeFunctionData({
+        const result = await publicClient.call({
+          to: bitzyQueryAddress,
+          data: data,
+          gas: 50_000_000_000n,
+          gasPrice: undefined,
+        });
+
+        if (result.data) {
+          const decoded = decodeFunctionResult({
             abi: BITZY_QUERY_ABI,
             functionName: "splitQuery",
-            args: [
-              amountInBN.toFixed(0) as any, // Same as v1: string, cast to satisfy TypeScript
-              encodedRoutes,
-              partCount as any, // Same as v1: number, cast to satisfy TypeScript
-            ],
+            data: result.data,
           });
 
-          const result = await this.config.publicClient.call({
-            to: bitzyQueryAddress,
-            data: data,
-            gas: 50_000_000_000n, // Same as v1: wrapReadContract2
-            gasPrice: undefined, // Same as v1: wrapReadContract2
-          });
+          const splitRouteData = decoded[1]; // Get the SplitRoute result
+          if (splitRouteData && splitRouteData.amountOut) {
+            amountOutBN = new BigNumber(splitRouteData.amountOut.toString());
+            let distributionsRaw = splitRouteData.distribution.map(
+              (d: bigint) => new BigNumber(d.toString()).toNumber()
+            );
 
-          console.log("SDK: Contract call result:", result);
+            // Build routes BEFORE filtering distributions (same as v1)
+            routes = validPath.reduce(
+              (acc: any[], path: any[], k: number) => {
+                if (distributionsRaw[k] > 0) {
+                  acc.push(
+                    path.map((value: any, i: number, values: any[]) => ({
+                      routerAddress:
+                        DEX_ROUTER[value.source + "_" + value.type] ||
+                        zeroAddress,
+                      lpAddress: value.pool || zeroAddress,
+                      fromToken: value.src,
+                      toToken: value.dest,
+                      from:
+                        i > 0 ||
+                        value.type === "V3" ||
+                        value.src === wrappedAddress.toLowerCase()
+                          ? ROUTER_TARGET
+                          : USER_TARGET,
+                      to:
+                        i < values.length - 1 ||
+                        (i === values.length - 1 &&
+                          value.dest === wrappedAddress.toLowerCase())
+                          ? ROUTER_TARGET
+                          : USER_TARGET,
+                      part: "100000000",
+                      amountAfterFee: new BigNumber(10000)
+                        .minus(new BigNumber(value.fee || 0).dividedBy(100))
+                        .toFixed(),
+                      dexInterface:
+                        DEX_INTERFACE[
+                          value.type as keyof typeof DEX_INTERFACE
+                        ] || 0,
+                    }))
+                  );
+                }
+                return acc;
+              },
+              []
+            );
 
-          if (result.data) {
-            const decoded = decodeFunctionResult({
-              abi: BITZY_QUERY_ABI,
-              functionName: "splitQuery",
-              data: result.data,
-            });
-
-            const splitRouteData = decoded[1]; // Get the SplitRoute result
-            if (splitRouteData && splitRouteData.amountOut) {
-              amountOutBN = new BigNumber(splitRouteData.amountOut.toString());
-              let distributionsRaw = splitRouteData.distribution.map(
-                (d: bigint) => new BigNumber(d.toString()).toNumber()
-              );
-
-              // Build routes BEFORE filtering distributions (same as v1)
-              routes = validPath.reduce(
-                (acc: any[], path: any[], k: number) => {
-                  if (distributionsRaw[k] > 0) {
-                    acc.push(
-                      path.map((value: any, i: number, values: any[]) => ({
-                        routerAddress:
-                          DEX_ROUTER[value.source + "_" + value.type] ||
-                          zeroAddress,
-                        lpAddress: value.pool || zeroAddress,
-                        fromToken: value.src,
-                        toToken: value.dest,
-                        from:
-                          i > 0 ||
-                          value.type === "V3" ||
-                          value.src === wrappedAddress.toLowerCase()
-                            ? ROUTER_TARGET
-                            : USER_TARGET,
-                        to:
-                          i < values.length - 1 ||
-                          (i === values.length - 1 &&
-                            value.dest === wrappedAddress.toLowerCase())
-                            ? ROUTER_TARGET
-                            : USER_TARGET,
-                        part: "100000000",
-                        amountAfterFee: new BigNumber(10000)
-                          .minus(new BigNumber(value.fee || 0).dividedBy(100))
-                          .toFixed(),
-                        dexInterface:
-                          DEX_INTERFACE[
-                            value.type as keyof typeof DEX_INTERFACE
-                          ] || 0,
-                      }))
-                    );
-                  }
-                  return acc;
-                },
-                []
-              );
-
-              // Filter out zero distributions AFTER building routes (same as v1)
-              distributions = distributionsRaw.filter((d: number) => d > 0);
-            }
+            // Filter out zero distributions AFTER building routes (same as v1)
+            distributions = distributionsRaw.filter((d: number) => d > 0);
           }
+        }
         } catch (contractError) {
-          console.error("SDK: splitQuery contract call failed:", contractError);
           // Return empty results when contract fails
           amountOutBN = new BigNumber(0);
           distributions = [];
           routes = [];
         }
-      } else {
-        // No publicClient available
-        console.error("SDK: No publicClient available - this is the problem!");
-        amountOutBN = new BigNumber(0);
-        distributions = [];
-        routes = [];
-      }
 
       // Calculate amountOutRoutes and amountInParts (same as v1)
       const amountOutRoutes = distributions.map((am: number) =>

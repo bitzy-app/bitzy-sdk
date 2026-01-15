@@ -83,6 +83,38 @@ export const CONTRACT_ADDRESSES: ChainWrap<{
   },
 };
 
+// Network-specific RPC configuration
+export const RPC_CONFIG: ChainWrap<{
+  rpcUrls: string[];
+  name: string;
+  nativeCurrency: {
+    name: string;
+    symbol: string;
+    decimals: number;
+  };
+}> = {
+  3637: {
+    // Botanix Mainnet
+    rpcUrls: ["https://rpc.botanixlabs.com"],
+    name: "Botanix Mainnet",
+    nativeCurrency: {
+      name: "Bitcoin",
+      symbol: "BTC",
+      decimals: 18,
+    },
+  },
+  3636: {
+    // Botanix Testnet
+    rpcUrls: ["https://node.botanixlabs.dev"],
+    name: "Botanix Testnet",
+    nativeCurrency: {
+      name: "Bitcoin",
+      symbol: "BTC",
+      decimals: 18,
+    },
+  },
+};
+
 // Network-specific liquidity sources configuration
 export const LIQUIDITY_SOURCES: ChainWrap<LiquiditySourcesConfig> = {
   3637: {
@@ -110,6 +142,10 @@ export const getContractAddresses = (chainId: number) => {
 
 export const getDexRouters = (chainId: number) => {
   return DEX_ROUTERS[chainId] || {};
+};
+
+export const getRpcConfig = (chainId: number) => {
+  return RPC_CONFIG[chainId];
 };
 
 // Legacy exports for backward compatibility

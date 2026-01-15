@@ -1,6 +1,6 @@
 import { SwapV3Service } from "../services/SwapV3Service";
 import { APIClient } from "../api/Client";
-import { Token, SwapOptions } from "../types";
+import { Token, SwapOptions, SwapV3AddressConfig } from "../types";
 
 // Mock APIClient
 jest.mock("../api/Client");
@@ -30,12 +30,16 @@ describe("SwapV3Service", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockApiClient = new APIClient({
+    mockApiClient = APIClient.getInstance({
       baseUrl: "test",
       timeout: 1000,
     }) as jest.Mocked<APIClient>;
     mockConfig.apiClient = mockApiClient;
-    swapService = new SwapV3Service(mockConfig);
+    swapService = new SwapV3Service({
+      config: mockConfig.config as SwapV3AddressConfig,
+      defaultPartCount: mockConfig.defaultPartCount,
+      apiClient: mockApiClient,
+    });
   });
 
   describe("fetchRoute", () => {
@@ -74,8 +78,8 @@ describe("SwapV3Service", () => {
 
       const options: SwapOptions = {
         amountIn: "1.0",
-        srcToken: nativeToken,
-        dstToken: wrappedToken,
+        srcToken: nativeToken as Token,
+        dstToken: wrappedToken as Token,
         chainId: 3637,
       };
 

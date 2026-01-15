@@ -63,6 +63,56 @@ console.log('Amount out:', result.amountOutBN.toFixed());
 console.log('Distributions:', result.distributions);
 ```
 
+**With Custom PublicClient (Optional):**
+
+```typescript
+import { fetchSwapRoute } from '@bitzy-app/bitzy-sdk';
+import { createPublicClient, http, defineChain } from 'viem';
+
+// Create your own PublicClient (e.g., from wagmi, or custom RPC)
+const publicClient = createPublicClient({
+  chain: defineChain({
+    id: 3637,
+    name: 'Botanix Mainnet',
+    network: 'botanix-mainnet',
+    nativeCurrency: {
+      name: 'Bitcoin',
+      symbol: 'BTC',
+      decimals: 18,
+    },
+    rpcUrls: {
+      default: { http: ['https://rpc.botanixlabs.com'] },
+    },
+  }),
+  transport: http(),
+});
+
+// Use your custom PublicClient for better performance and connection reuse
+const result = await fetchSwapRoute(
+  {
+    amountIn: '1.5',
+    srcToken: btcToken,
+    dstToken: usdcToken,
+    chainId: 3637,
+  },
+  {
+    publicClient: publicClient, // Optional: inject your own client
+    headers: {
+      'authen-key': 'your-api-key', // Optional: API key for authentication
+    },
+  }
+);
+```
+
+**Note:** If you don't provide `publicClient`, the SDK will automatically create one using default RPC endpoints:
+- **Botanix Mainnet (3637)**: `https://rpc.botanixlabs.com`
+- **Botanix Testnet (3636)**: `https://node.botanixlabs.dev`
+
+Injecting your own client is useful when:
+- You already have a `PublicClient` instance (e.g., from wagmi's `useAccount()`)
+- You want to reuse connections for better performance
+- You need to use a custom RPC endpoint
+
 ### **1.2 `fetchBatchSwapRoutes()` - Batch Route Aggregation**
 
 ```typescript
@@ -679,6 +729,8 @@ Main function for aggregating swap routes across multiple DEXs in any environmen
 
 **Returns:** `Promise<SwapResult>`
 
+**Note:** The `publicClient` is automatically created using default RPC endpoints if not provided. You can optionally inject your own `PublicClient` instance (e.g., from wagmi) for better performance and connection reuse.
+
 #### **`fetchBatchSwapRoutes(requests)`**
 Aggregate multiple routes simultaneously across different token pairs.
 
@@ -749,6 +801,7 @@ interface FetchSwapRouteConfig {
   timeout?: number;           // Optional: Request timeout (defaults to 30000)
   headers?: Record<string, string>; // Optional: Custom HTTP headers (defaults to {})
   forcePartCount?: number;    // Optional: Force specific partCount, overriding intelligent calculation
+  publicClient?: PublicClient; // Optional: Viem PublicClient instance (auto-created if not provided)
 }
 ```
 
@@ -882,6 +935,9 @@ When no config is provided, the aggregator SDK uses these sensible defaults:
 - **API URL**: `https://api-public.bitzy.app` (from `DEFAULT_API_BASE_URL`)
 - **API Key**: From `NEXT_PUBLIC_BITZY_API_KEY` environment variable or fallback
 - **Addresses**: Network-specific defaults from `CONTRACT_ADDRESSES`
+- **RPC Endpoints**: 
+  - Botanix Mainnet (3637): `https://rpc.botanixlabs.com`
+  - Botanix Testnet (3636): `https://node.botanixlabs.dev`
 - **PartCount**: `5` for high-value pairs, `1` for others
 - **Timeout**: `30` seconds
 - **Refresh**: `10` seconds

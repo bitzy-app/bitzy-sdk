@@ -29,7 +29,6 @@ export class APIClient {
     if (!APIClient.instance) {
       // Add API key to headers if not already present
 
-      console.log(3232, process.env.NEXT_PUBLIC_BITZY_API_KEY);
       const configWithApiKey = {
         ...config,
         headers: {
@@ -145,18 +144,22 @@ export class APIClient {
 
   /**
    * Build query string from parameters
+   * Arrays are formatted as JSON strings with quotes encoded as %22, brackets not encoded
+   * Example: typeId=["1","2"] becomes typeId=[%221%22,%222%22]
    */
   private buildQueryString(queries: any): string {
     return Object.keys(queries)
       .reduce((result: any, key: string) => {
-        return [
-          ...result,
-          `${key}=${
-            Array.isArray(queries[key])
-              ? '["' + queries[key].map((v: any) => v).join('","') + '"]'
-              : queries[key]
-          }`,
-        ];
+        let value: string;
+        if (Array.isArray(queries[key])) {
+          // Format as JSON array string: ["1","2"]
+          const arrayStr = '["' + queries[key].map((v: any) => v).join('","') + '"]';
+          // Encode only quotes (%22), keep brackets unencoded
+          value = arrayStr.replace(/"/g, "%22");
+        } else {
+          value = String(queries[key]);
+        }
+        return [...result, `${key}=${value}`];
       }, [])
       .join("&");
   }

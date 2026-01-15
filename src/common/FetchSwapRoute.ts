@@ -23,6 +23,13 @@ export interface FetchSwapRouteConfig {
    *   - Low-value tokens (meme tokens, small caps): partCount = 1 (simpler routing)
    */
   forcePartCount?: number;
+  /**
+   * Optional PublicClient from viem
+   * - If provided, will be used for contract calls
+   * - If not provided, SDK will automatically create one using RPC_CONFIG
+   * - Useful when you already have a PublicClient instance (e.g., from wagmi)
+   */
+  publicClient?: PublicClient;
 }
 
 /**
@@ -39,6 +46,7 @@ export async function fetchSwapRoute(
     defaultPartCount = DEFAULT_PART_COUNT,
     timeout = 30000,
     headers = {},
+    publicClient,
   } = config;
 
   // Get network-specific configuration
@@ -65,6 +73,7 @@ export async function fetchSwapRoute(
     } as SwapV3AddressConfig,
     defaultPartCount: defaultPartCount,
     apiClient: apiClient,
+    publicClient: publicClient,
   });
 
   return swapService.fetchRoute(options);
