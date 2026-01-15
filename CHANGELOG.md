@@ -1,3 +1,12 @@
+## [0.0.8](https://github.com/bitzy-app/bitzy-sdk/compare/v0.0.7...v0.0.8) (2026-01-15)
+
+
+### Features
+
+* add automatic publicClient creation and RPC configuration ([4376ec3](https://github.com/bitzy-app/bitzy-sdk/commit/4376ec33161e18133126ea49835bcb4f19200a57))
+
+
+
 ## [0.0.7](https://github.com/bitzy-app/bitzy-sdk/compare/v0.0.6...v0.0.7) (2025-09-17)
 
 
