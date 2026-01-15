@@ -32,12 +32,20 @@ export default [
       }),
       terser(),
     ],
-    external: Object.keys(packageJson.peerDependencies || {}),
+    external: [
+      ...Object.keys(packageJson.peerDependencies || {}),
+      'viem',
+      'bignumber.js',
+    ],
   },
   {
     input: "src/index.ts",
     output: [{ file: "dist/index.d.ts", format: "esm" }],
     plugins: [dts()],
-    external: Object.keys(packageJson.peerDependencies || {}),
+    external: [
+      ...Object.keys(packageJson.peerDependencies || {}),
+      'viem',
+      'bignumber.js',
+    ],
   },
 ];

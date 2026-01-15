@@ -62,11 +62,19 @@
     "viem": "^2.0.0"
   },
   "peerDependencies": {
-    "react": ">=16.8.0"
+    "react": ">=16.8.0",
+    "viem": "^2.0.0",
+    "bignumber.js": "^9.1.2"
   },
   "peerDependenciesMeta": {
     "react": {
       "optional": true
+    },
+    "viem": {
+      "optional": false
+    },
+    "bignumber.js": {
+      "optional": false
     }
   },
   "publishConfig": {
