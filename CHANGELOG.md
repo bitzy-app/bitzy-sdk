@@ -1,3 +1,14 @@
+## [0.1.2](https://github.com/bitzy-app/bitzy-sdk/compare/v0.1.1...v0.1.2) (2026-02-13)
+
+### Bug Fixes
+
+* **route fetching on iOS**: build query string with `URLSearchParams` so params are encoded once; removes double-encoding that caused API errors when the URL was re-encoded by the client ([getPathV3](src/api/Client.ts))
+
+### Added
+
+* APIClient encoding tests ([Client.test.ts](src/__tests__/Client.test.ts)) to assert single-encoded URL and prevent regression
+* Jest config ([jest.config.cjs](jest.config.cjs)) with ts-jest so TypeScript tests run
+
 ## [0.1.1](https://github.com/bitzy-app/bitzy-sdk/compare/v0.1.0...v0.1.1) (2026-01-15)
 
 
