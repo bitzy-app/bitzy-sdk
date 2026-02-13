@@ -3,7 +3,12 @@ import { APIClient } from "../api/Client";
 import { Token, SwapOptions, SwapV3AddressConfig } from "../types";
 
 // Mock APIClient
-jest.mock("../api/Client");
+jest.mock("../api/Client", () => ({
+  APIClient: {
+    getInstance: jest.fn(),
+    resetInstance: jest.fn(),
+  },
+}));
 
 describe("SwapV3Service", () => {
   let swapService: SwapV3Service;
@@ -30,10 +35,11 @@ describe("SwapV3Service", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockApiClient = APIClient.getInstance({
-      baseUrl: "test",
-      timeout: 1000,
-    }) as jest.Mocked<APIClient>;
+    mockApiClient = {
+      getPathV3: jest.fn().mockResolvedValue({ possible: [] }),
+      getAssetMinimum: jest.fn().mockResolvedValue({}),
+    } as unknown as jest.Mocked<APIClient>;
+    (APIClient.getInstance as jest.Mock).mockReturnValue(mockApiClient);
     mockConfig.apiClient = mockApiClient;
     swapService = new SwapV3Service({
       config: mockConfig.config as SwapV3AddressConfig,

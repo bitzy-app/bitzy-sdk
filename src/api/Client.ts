@@ -109,6 +109,7 @@ export class APIClient {
 
   /**
    * Get V3 path for swap routing
+   * Uses URLSearchParams for single encoding (avoids double-encoding on iOS).
    */
   async getPathV3(
     srcToken: Token,
@@ -117,17 +118,14 @@ export class APIClient {
     types: number[],
     enabledSources: number[]
   ): Promise<PathV3Response> {
-    const params = {
-      src: srcToken.address,
-      dest: dstToken.address,
-      amount: amountIn,
-      typeId: types,
-      sourceId: enabledSources,
-    };
+    const params = new URLSearchParams();
+    params.set("src", srcToken.address);
+    params.set("dest", dstToken.address);
+    params.set("amount", amountIn);
+    params.set("typeId", JSON.stringify(types));
+    params.set("sourceId", JSON.stringify(enabledSources));
 
-    const query = this.buildQueryString(params);
-
-    return this.request<PathV3Response>(`${API_ENDPOINTS.PATH_V3}?${query}`, {
+    return this.request<PathV3Response>(`${API_ENDPOINTS.PATH_V3}?${params.toString()}`, {
       method: "GET",
     });
   }
@@ -140,27 +138,5 @@ export class APIClient {
     return this.request<any>(API_ENDPOINTS.ASSET_MINIMUM, {
       method: "GET",
     });
-  }
-
-  /**
-   * Build query string from parameters
-   * Arrays are formatted as JSON strings with quotes encoded as %22, brackets not encoded
-   * Example: typeId=["1","2"] becomes typeId=[%221%22,%222%22]
-   */
-  private buildQueryString(queries: any): string {
-    return Object.keys(queries)
-      .reduce((result: any, key: string) => {
-        let value: string;
-        if (Array.isArray(queries[key])) {
-          // Format as JSON array string: ["1","2"]
-          const arrayStr = '["' + queries[key].map((v: any) => v).join('","') + '"]';
-          // Encode only quotes (%22), keep brackets unencoded
-          value = arrayStr.replace(/"/g, "%22");
-        } else {
-          value = String(queries[key]);
-        }
-        return [...result, `${key}=${value}`];
-      }, [])
-      .join("&");
   }
 }
